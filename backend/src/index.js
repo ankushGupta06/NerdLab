@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import questionRoutes from "./routes/question.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import runRoutes from "./routes/run.routes.js";
+import judgeRoutes from "./routes/judge.routes.js";
 
 
 
@@ -18,6 +19,7 @@ app.use(express.json());
 app.use("/api/questions", questionRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/run", runRoutes);
+app.use("/api/judge", judgeRoutes);
 
 
 app.get("/", (req, res) => {
