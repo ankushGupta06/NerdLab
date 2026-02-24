@@ -1,9 +1,23 @@
 import express from "express";
-import { runCodeForQuestion } from "../controllers/run.controller.js";
+import {
+  runSubmission,
+  submitSubmission,
+} from "../controllers/run.controller.js";
 
 const router = express.Router();
 
-// POST /api/run/1  (run code for question 1)
-router.post("/:id", runCodeForQuestion);
+/*
+  🟢 RUN ROUTE
+  - Used for debugging
+  - Shows visible test case outputs
+*/
+router.post("/run/:id", runSubmission);
+
+/*
+  🔵 SUBMIT ROUTE
+  - Final evaluation
+  - No test case leakage
+*/
+router.post("/submit/:id", submitSubmission);
 
 export default router;

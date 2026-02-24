@@ -1,8 +1,11 @@
-import express from "express";
-import { judgeSubmission } from "../controllers/judge.controller.js";
+// import express from "express";
+// import { judgeSubmission } from "../controllers/judge.controller.js";
 
-const router = express.Router();
+// const router = express.Router();
 
-router.post("/:id", judgeSubmission);
+// router.post("/:id", judgeSubmission);
 
-export default router;
+// export default router;
+
+
+// delete this 

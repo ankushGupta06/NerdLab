@@ -1,143 +1,172 @@
-import { exec } from "child_process";
+import { spawn } from "child_process";
 import fs from "fs";
 import path from "path";
 import { v4 as uuid } from "uuid";
 
-/**
- * BASIC RUN (used by /api/run)
- * Executes code without test case input
- */
-export const runCode = async (code, language) => {
-  return runCodeWithInput(code, language, "");
-};
+/* ===========================
+   Utility
+=========================== */
 
-/**
- * JUDGE RUN (used by /api/judge)
- * Executes code with hidden test case input inside Docker sandbox
- */
-export const runCodeWithInput = async (code, language, input = "") => {
-  language = language.toLowerCase();
-
+const createJobDir = () => {
   const jobId = uuid();
-
-  // Ensure jobs directory is inside backend (safe for Windows Docker mounts)
   const jobsDir = path.join(process.cwd(), "jobs");
   const jobDir = path.join(jobsDir, jobId);
-
-  // Create isolated job directory
   fs.mkdirSync(jobDir, { recursive: true });
+  return jobDir;
+};
 
-  let fileName;
-  let runCommand;
-  let image;
+const cleanup = (dir) => {
+  setTimeout(() => {
+    try {
+      fs.rmSync(dir, { recursive: true, force: true });
+    } catch {}
+  }, 1000);
+};
 
-  // Language configurations
+/* ===========================
+   CORE MULTI TEST EXECUTOR
+=========================== */
+
+export const runMultipleTests = async ({
+  code,
+  language,
+  testCases,
+}) => {
+  language = language.toLowerCase();
+  const jobDir = createJobDir();
+
+  let image = "";
+  let compileCommand = "";
+  let runCommandTemplate = "";
+  let fileName = "";
+
+  /* ---------------- LANGUAGE SETUP ---------------- */
+
   if (language === "python") {
-    fileName = "main.py";
-    runCommand = input
-      ? "python main.py < input.txt"
-      : "python main.py";
     image = "python:3.11-slim";
-  } else if (language === "cpp") {
-    fileName = "main.cpp";
-    runCommand = input
-      ? "g++ main.cpp -O2 -o main && ./main < input.txt"
-      : "g++ main.cpp -O2 -o main && ./main";
-    image = "gcc:12";
-  } else if (language === "java") {
-    fileName = "Main.java";
-    runCommand = input
-      ? "javac Main.java && java Main < input.txt"
-      : "javac Main.java && java Main";
-    image = "eclipse-temurin:17-jdk";
-  } else {
-    return "Unsupported language";
+    fileName = "main.py";
+    compileCommand = "";
+    runCommandTemplate = "python main.py < INPUT_FILE";
   }
 
-  try {
-    // Write user code file
-    const codePath = path.join(jobDir, fileName);
-    fs.writeFileSync(codePath, code);
+  else if (language === "cpp") {
+    image = "gcc:12";
+    fileName = "main.cpp";
+    compileCommand = "g++ main.cpp -O2 -o main || exit 1";
+    runCommandTemplate = "./main < INPUT_FILE";
+  }
 
-    // Write input file only if needed (for judge mode)
-    if (input) {
-      const inputPath = path.join(jobDir, "input.txt");
-      fs.writeFileSync(inputPath, input);
-    }
+  else if (language === "java") {
+    image = "eclipse-temurin:17-jdk";
+    fileName = "Main.java";
+    compileCommand = "javac Main.java || exit 1";
+    runCommandTemplate =
+      "java -Xms16m -Xmx64m -XX:+UseSerialGC Main < INPUT_FILE";
+  }
 
-    // Normalize Windows path for Docker
-    const normalizedJobDir = jobDir.replace(/\\/g, "/");
+  else {
+    return { type: "ERROR", output: "Unsupported language" };
+  }
 
-    // Windows-safe Docker command (NO multiline slashes, properly quoted volume)
-    const dockerCommand = [
-      "docker run --rm",
-      "--memory=128m",
-      "--cpus=0.5",
-      "--network=none",
-      "--pids-limit=64",
-      "--ulimit cpu=2",
-      "--security-opt=no-new-privileges",
-      `-w /app`,
-      `-v "${normalizedJobDir}:/app"`,
-      image,
-      `sh -c "${runCommand}"`
-    ].join(" ");
+  /* ---------------- WRITE CODE FILE ---------------- */
 
-    console.log("Job Dir:", normalizedJobDir);
-    console.log("Docker Command:", dockerCommand);
+  fs.writeFileSync(path.join(jobDir, fileName), code);
 
-    // Windows-safe cleanup (fixes ENOTEMPTY due to Docker file locks)
-    const safeCleanup = (dir) => {
-      setTimeout(() => {
-        try {
-          fs.rmSync(dir, { recursive: true, force: true });
-          console.log("🧹 Cleaned job dir:", dir);
-        } catch (err) {
-          console.warn("⚠️ Cleanup retry (Docker lock):", err.message);
+  /* ---------------- WRITE INPUT FILES ---------------- */
 
-          // Final retry (Java/C++ containers release files slower on Windows)
-          setTimeout(() => {
-            try {
-              fs.rmSync(dir, { recursive: true, force: true });
-              console.log("🧹 Cleaned job dir (retry):", dir);
-            } catch (finalErr) {
-              console.error(
-                "❌ Failed to cleanup job dir (ignored):",
-                finalErr.message
-              );
-            }
-          }, 1200);
-        }
-      }, 700); // Delay to allow Docker to fully unmount volume
-    };
+  testCases.forEach((test, index) => {
+    fs.writeFileSync(
+      path.join(jobDir, `input${index}.txt`),
+      test.input + "\n"
+    );
+  });
 
-    // Execute inside Docker sandbox
-    return await new Promise((resolve) => {
-      exec(dockerCommand, { timeout: 7000 }, (error, stdout, stderr) => {
-        // Always cleanup temp job folder safely
-        safeCleanup(jobDir);
+  /* ---------------- BUILD RUN SCRIPT ---------------- */
 
-        if (error) {
-          // Timeout or execution failure
-          if (error.killed) {
-            resolve("Time Limit Exceeded");
-            return;
-          }
+  let script = "#!/bin/sh\n\n";
 
-          resolve(stderr || error.message || "Execution Error");
-          return;
-        }
+  if (compileCommand) {
+    script += compileCommand + "\n\n";
+  }
 
-        if (stderr && stderr.trim().length > 0) {
-          resolve(stderr);
-          return;
-        }
+  testCases.forEach((_, index) => {
+    script += `
+echo "===CASE_${index}===";
+timeout 5s ${runCommandTemplate.replace(
+      "INPUT_FILE",
+      `input${index}.txt`
+    )} || exit 124;
+`;
+  });
 
-        resolve(stdout || "No Output");
+  const runScriptPath = path.join(jobDir, "run.sh");
+  fs.writeFileSync(runScriptPath, script);
+  fs.chmodSync(runScriptPath, 0o755);
+
+  const normalizedPath = jobDir.replace(/\\/g, "/");
+
+  /* ---------------- DOCKER COMMAND ---------------- */
+
+  const dockerArgs = [
+    "run",
+    "--rm",
+    "--memory=256m",
+    "--cpus=0.5",
+    "--network=none",
+    "--pids-limit=64",
+    "--security-opt=no-new-privileges",
+    "-w",
+    "/app",
+    "-v",
+    `${normalizedPath}:/app`,
+    image,
+    "sh",
+    "run.sh",
+  ];
+
+  /* ---------------- EXECUTION ---------------- */
+
+  return new Promise((resolve) => {
+    const dockerProcess = spawn("docker", dockerArgs);
+
+    let stdout = "";
+    let stderr = "";
+
+    const timeout = setTimeout(() => {
+      dockerProcess.kill("SIGKILL");
+      cleanup(jobDir);
+      resolve({ type: "TLE", output: "Time Limit Exceeded" });
+    }, 10000);
+
+    dockerProcess.stdout.on("data", (data) => {
+      stdout += data.toString();
+    });
+
+    dockerProcess.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    dockerProcess.on("close", (code) => {
+      clearTimeout(timeout);
+      cleanup(jobDir);
+
+      if (code === 124) {
+        resolve({ type: "TLE", output: "Time Limit Exceeded" });
+        return;
+      }
+
+      if (code !== 0) {
+        resolve({
+          type: "ERROR",
+          output: stderr || stdout || "Execution failed",
+        });
+        return;
+      }
+
+      resolve({
+        type: "SUCCESS",
+        output: stdout,
       });
     });
-  } catch (err) {
-    console.error("Executor Internal Error:", err);
-    return "Internal Executor Error";
-  }
+  });
 };
