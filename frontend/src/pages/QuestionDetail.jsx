@@ -26,8 +26,9 @@ export default function QuestionDetail() {
   const [code, setCode] = useState("");
   const [language, setLanguage] = useState("python");
   const [isRunning, setIsRunning] = useState(false);
+  const [isLoadingQuestion, setIsLoadingQuestion] = useState(true);
 
-  // States for the Judge Response
+  // Judge response
   const [testResults, setTestResults] = useState(null);
   const [error, setError] = useState("");
 
@@ -39,12 +40,11 @@ export default function QuestionDetail() {
     if (!question) return;
 
     try {
-      if (question.starterCode) {
-        const parsed = JSON.parse(question.starterCode);
-        setCode(parsed[language] || fallbackTemplates[language]);
-      } else {
-        setCode(fallbackTemplates[language]);
-      }
+      const parsed = question.starterCode
+        ? JSON.parse(question.starterCode)
+        : null;
+
+      setCode(parsed?.[language] || fallbackTemplates[language]);
     } catch (err) {
       console.error("Starter code parse error:", err);
       setCode(fallbackTemplates[language]);
@@ -53,19 +53,17 @@ export default function QuestionDetail() {
 
   const fetchQuestion = async () => {
     try {
-      const res = await API.get(`/questions/${id}`);
-      const q = res.data.question;
-      setQuestion(q);
+      setIsLoadingQuestion(true);
+      setError("");
+      setTestResults(null);
 
-      if (q?.starterCode) {
-        const parsed = JSON.parse(q.starterCode);
-        setCode(parsed["python"] || fallbackTemplates["python"]);
-      } else {
-        setCode(fallbackTemplates["python"]);
-      }
+      const res = await API.get(`/questions/${id}`);
+      setQuestion(res.data.question);
     } catch (error) {
       console.error("Error fetching question:", error);
       setError("Failed to load question.");
+    } finally {
+      setIsLoadingQuestion(false);
     }
   };
 
@@ -194,10 +192,14 @@ export default function QuestionDetail() {
           <div className="flex items-center gap-2 px-6 py-3 border-b border-slate-800 text-xs font-bold uppercase tracking-wider text-slate-500">
             <BookOpen size={14} /> Description
           </div>
+
           <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+            {/* Title */}
             <h2 className="text-2xl font-bold text-white mb-4">
               {question.title}
             </h2>
+
+            {/* Tags */}
             <div className="flex gap-2 mb-6">
               <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded text-xs font-semibold uppercase">
                 {question.difficulty}
@@ -206,11 +208,58 @@ export default function QuestionDetail() {
                 Topic: {question.topic}
               </span>
             </div>
-            <div className="prose prose-invert prose-slate">
+
+            {/* Description */}
+            <div className="mb-8">
               <p className="text-slate-400 leading-relaxed text-sm lg:text-base whitespace-pre-wrap">
                 {question.description}
               </p>
             </div>
+
+            {/* Examples Section */}
+            {question.examples && question.examples.length > 0 && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-white border-b border-slate-800 pb-2">
+                  Examples
+                </h3>
+
+                {question.examples.map((ex, index) => (
+                  <div
+                    key={ex.id}
+                    className="bg-slate-900 border border-slate-800 rounded-lg p-4"
+                  >
+                    <p className="text-sm font-semibold text-slate-300 mb-2">
+                      Example {index + 1}
+                    </p>
+
+                    <div className="mb-3">
+                      <p className="text-xs text-slate-500 mb-1">Input:</p>
+                      <pre className="bg-slate-950 p-2 rounded text-emerald-400 text-sm overflow-x-auto">
+                        {ex.input}
+                      </pre>
+                    </div>
+
+                    <div className="mb-3">
+                      <p className="text-xs text-slate-500 mb-1">Output:</p>
+                      <pre className="bg-slate-950 p-2 rounded text-blue-400 text-sm overflow-x-auto">
+                        {ex.output}
+                      </pre>
+                    </div>
+
+                    {ex.explanation && (
+                      <div>
+                        <p className="text-xs text-slate-500 mb-1">
+                          Explanation:
+                        </p>
+                        <p className="text-slate-400 text-sm">
+                          {ex.explanation}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 

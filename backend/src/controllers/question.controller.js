@@ -28,6 +28,9 @@ export const getQuestionById = async (req, res) => {
       where: {
         id: parseInt(id),
       },
+      include: {
+        examples: true,
+      },
     });
 
     if (!question) {
@@ -40,6 +43,7 @@ export const getQuestionById = async (req, res) => {
       success: true,
       question,
     });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({

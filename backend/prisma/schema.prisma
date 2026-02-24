@@ -21,6 +21,7 @@ model Question {
   topic       String    @default("General")
   starterCode String?
   testCases   TestCase[]
+  examples Example[]
   createdAt   DateTime   @default(now())
 }
 
@@ -31,4 +32,13 @@ model TestCase {
   isHidden   Boolean  @default(true)
   questionId Int
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+}
+
+model Example {
+  id          Int      @id @default(autoincrement())
+  questionId  Int
+  input       String
+  output      String
+  explanation String?
+  question    Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }
