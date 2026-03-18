@@ -114,6 +114,7 @@ export const submitSubmission = async (req, res) => {
   try {
     const { id } = req.params;
     const { code, language } = req.body;
+    const userId = req.user.id; // ✅ from auth middleware now
 
     const { passed, total } = await evaluateSubmission(
       id,
@@ -122,11 +123,36 @@ export const submitSubmission = async (req, res) => {
       "submit",
     );
 
-    res.json({
-      verdict: passed === total ? "Accepted" : "Wrong Answer",
-      passed,
-      total,
+    const verdict = passed === total ? "Accepted" : "Wrong Answer";
+
+    await prisma.submission.create({
+      data: {
+        userId,
+        questionId: parseInt(id),
+        code,
+        language,
+        status: verdict,
+      },
     });
+
+    if (verdict === "Accepted") {
+      await prisma.solvedProblem.upsert({
+        where: {
+          userId_questionId: {
+            userId,
+            questionId: parseInt(id),
+          },
+        },
+        update: {},
+        create: {
+          userId,
+          questionId: parseInt(id),
+        },
+      });
+    }
+
+    res.json({ verdict, passed, total });
+
   } catch (error) {
     res.status(500).json({
       error: error.message || "Submission failed",

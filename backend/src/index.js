@@ -6,6 +6,8 @@ import questionRoutes from "./routes/question.routes.js";
 import authRoutes from "./routes/auth.routes.js";
 import runRoutes from "./routes/run.routes.js";
 import exampleRoutes from "./routes/example.routes.js";
+import profileRoutes from "./routes/profile.routes.js";
+import leaderboardRoutes from "./routes/leaderboard.routes.js";
 // import judgeRoutes from "./routes/judge.routes.js";
 
 
@@ -21,6 +23,8 @@ app.use("/api/questions", questionRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api", runRoutes);
 app.use("/api", exampleRoutes);
+app.use("/api/profile", profileRoutes);
+app.use("/api/leaderboard", leaderboardRoutes);
 // app.use("/api/judge", judgeRoutes);
 
 

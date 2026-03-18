@@ -4,15 +4,15 @@ import jwt from "jsonwebtoken";
 
 export const signup = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, username } = req.body;
 
-    if (!email || !password) {
+    if (!email || !password || !username) {
       return res.status(400).json({
-        error: "Email and password are required",
+        error: "Email, password and username are required",
       });
     }
 
-    // Check if user exists
+    // Check if email exists
     const existingUser = await prisma.user.findUnique({
       where: { email },
     });
@@ -20,6 +20,17 @@ export const signup = async (req, res) => {
     if (existingUser) {
       return res.status(400).json({
         error: "User already exists",
+      });
+    }
+
+    // Check if username taken
+    const existingUsername = await prisma.user.findUnique({
+      where: { username },
+    });
+
+    if (existingUsername) {
+      return res.status(400).json({
+        error: "Username already taken",
       });
     }
 
@@ -31,6 +42,7 @@ export const signup = async (req, res) => {
       data: {
         email,
         password: hashedPassword,
+        username,
       },
     });
 
@@ -38,6 +50,7 @@ export const signup = async (req, res) => {
       success: true,
       message: "User created successfully",
       userId: user.id,
+      username: user.username,
     });
   } catch (error) {
     console.error(error);
@@ -74,13 +87,14 @@ export const login = async (req, res) => {
     const token = jwt.sign(
       { userId: user.id },
       process.env.JWT_SECRET || "secret123",
-      { expiresIn: "7d" }
+      { expiresIn: "7d" },
     );
 
     res.status(200).json({
       success: true,
       token,
       userId: user.id,
+      username: user.username, // ✅ add this
     });
   } catch (error) {
     console.error(error);
