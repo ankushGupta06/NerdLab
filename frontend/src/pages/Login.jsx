@@ -1,16 +1,16 @@
 import { useState } from "react";
 import API from "../api/api";
 import { useNavigate } from "react-router-dom";
-import { Lock, Mail, ArrowRight, ShieldCheck, UserPlus, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Lock, Mail, ArrowRight, ShieldCheck, UserPlus, AlertCircle, CheckCircle2, User } from "lucide-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState(""); // ✅ added
   const [isSignup, setIsSignup] = useState(false);
   const [loading, setLoading] = useState(false);
   
-  // Custom Alert State
-  const [notification, setNotification] = useState({ message: "", type: "" }); // type: 'error' or 'success'
+  const [notification, setNotification] = useState({ message: "", type: "" });
 
   const navigate = useNavigate();
 
@@ -25,15 +25,21 @@ export default function Login() {
     
     try {
       const endpoint = isSignup ? "/auth/signup" : "/auth/login";
-      const res = await API.post(endpoint, { email, password });
+      const res = await API.post(endpoint, { 
+        email, 
+        password,
+        ...(isSignup && { username }), // ✅ only send on signup
+      });
 
       if (!isSignup) {
         localStorage.setItem("token", res.data.token);
+        localStorage.setItem("username", res.data.username); // ✅ save username
         navigate("/questions");
       } else {
         showToast("Account created successfully! Please login.", "success");
         setIsSignup(false);
         setPassword("");
+        setUsername(""); // ✅ clear username on signup success
       }
     } catch (err) {
       const errorMsg = err?.response?.data?.error || "Authentication failed";
@@ -50,7 +56,7 @@ export default function Login() {
       <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-500/10 rounded-full blur-[120px] animate-pulse"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-500/10 rounded-full blur-[120px] animate-pulse"></div>
 
-      {/* --- STYLISH ALERTS (TOAST) --- */}
+      {/* Toast Notification */}
       {notification.message && (
         <div className={`fixed top-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl border shadow-2xl animate-in slide-in-from-right duration-300 ${
           notification.type === 'error' 
@@ -79,6 +85,27 @@ export default function Login() {
 
         <form className="mt-8 space-y-5" onSubmit={handleAuth}>
           <div className="space-y-4">
+
+            {/* Username Field - only on signup */}
+            {isSignup && (
+              <div className="group">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">
+                  Username
+                </label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={18} />
+                  <input
+                    type="text"
+                    required={isSignup}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="block w-full pl-12 pr-4 py-3.5 bg-slate-900/50 border border-slate-700 rounded-2xl text-slate-100 placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all outline-none"
+                    placeholder="codenerd123"
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Email Field */}
             <div className="group">
               <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">
@@ -114,6 +141,7 @@ export default function Login() {
                 />
               </div>
             </div>
+
           </div>
 
           <button
@@ -136,6 +164,7 @@ export default function Login() {
             onClick={() => {
               setIsSignup(!isSignup);
               setNotification({ message: "", type: "" });
+              setUsername(""); // ✅ clear username when toggling
             }}
             className="text-sm font-medium text-slate-400 hover:text-white transition-colors inline-flex items-center gap-2"
           >

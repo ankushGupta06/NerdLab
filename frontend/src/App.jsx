@@ -1,20 +1,31 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import Layout from "./components/Layout";
+
 import Login from "./pages/Login";
 import Questions from "./pages/Questions";
 import QuestionDetail from "./pages/QuestionDetail";
+import Leaderboard from "./pages/Leaderboard";
+import Profile from "./pages/Profile";
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Page 1: Login */}
+        
+        {/* 1. ROUTES WITHOUT NAVBAR (Login/Landing) */}
         <Route path="/" element={<Login />} />
 
-        {/* Page 2: Questions List */}
-        <Route path="/questions" element={<Questions />} />
+        {/* 2. ROUTES WITH NAVBAR (Grouped via Layout) */}
+        <Route element={<Layout />}>
+          <Route path="/questions" element={<Questions />} />
+          <Route path="/questions/:id" element={<QuestionDetail />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
+          <Route path="/profile/:username" element={<Profile />} />
+        </Route>
 
-        {/* Page 3: Individual Question + Code Runner */}
-        <Route path="/questions/:id" element={<QuestionDetail />} />
+        {/* Optional: Catch-all 404 page (no navbar) */}
+        {/* <Route path="*" element={<NotFound />} /> */}
+
       </Routes>
     </BrowserRouter>
   );

@@ -36,29 +36,6 @@ export default function Questions() {
 
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-300 flex flex-col">
-      {/* Navbar */}
-      <nav className="h-16 border-b border-slate-800 bg-[#1e293b]/50 backdrop-blur-md sticky top-0 z-50 px-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="bg-indigo-600 p-1.5 rounded-lg">
-            <Code2 className="text-white" size={20} />
-          </div>
-          <span className="text-xl font-bold text-white tracking-tight">NerdLab</span>
-        </div>
-
-        <div className="flex items-center gap-6">
-          <div className="hidden md:flex items-center gap-4 text-sm font-medium text-slate-400">
-            <button className="text-indigo-400 border-b-2 border-indigo-400 pb-5 pt-5 px-1">Problems</button>
-            <button className="hover:text-white transition-colors">Contests</button>
-            <button className="hover:text-white transition-colors">Leaderboard</button>
-          </div>
-          <button 
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-sm font-semibold text-rose-400 hover:bg-rose-400/10 px-3 py-1.5 rounded-lg transition-all border border-transparent hover:border-rose-400/20"
-          >
-            <LogOut size={16} /> Logout
-          </button>
-        </div>
-      </nav>
 
       <main className="max-w-6xl mx-auto w-full p-6 md:p-10">
         {/* Header & Search */}

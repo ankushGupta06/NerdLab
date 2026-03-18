@@ -1,4 +1,5 @@
 import express from "express";
+import authMiddleware from "../middlewares/auth.middleware.js";
 import {
   runSubmission,
   submitSubmission,
@@ -11,13 +12,13 @@ const router = express.Router();
   - Used for debugging
   - Shows visible test case outputs
 */
-router.post("/run/:id", runSubmission);
+router.post("/run/:id", authMiddleware, runSubmission);
 
 /*
   🔵 SUBMIT ROUTE
   - Final evaluation
   - No test case leakage
 */
-router.post("/submit/:id", submitSubmission);
+router.post("/submit/:id", authMiddleware, submitSubmission);
 
 export default router;
