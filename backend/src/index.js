@@ -10,7 +10,7 @@ import profileRoutes from "./routes/profile.routes.js";
 import leaderboardRoutes from "./routes/leaderboard.routes.js";
 // import judgeRoutes from "./routes/judge.routes.js";
 
-
+import { startLeaderboardCron } from "./services/leaderboard.service.js";
 
 dotenv.config();
 
@@ -18,6 +18,8 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
+
+startLeaderboardCron();
 
 app.use("/api/questions", questionRoutes);
 app.use("/api/auth", authRoutes);

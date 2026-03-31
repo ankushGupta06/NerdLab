@@ -2,58 +2,43 @@ import prisma from "../lib/prisma.js";
 
 export const getLeaderboard = async (req, res) => {
   try {
+    const { page = 1, limit = 50 } = req.query;
 
-    const users = await prisma.user.findMany({
+    const skip = (page - 1) * limit;
+
+    const leaderboard = await prisma.leaderboard.findMany({
+      orderBy: { rank: "asc" },
+      skip: Number(skip),
+      take: Number(limit),
       include: {
-        solved: {
-          include: {
-            question: true,
-          },
-        },
-      },
+        user: {
+          select: {
+            id: true,
+            username: true
+          }
+        }
+      }
     });
-
-    const leaderboard = users.map((user) => {
-
-      const easy = user.solved.filter(
-        (s) => s.question.difficulty === "Easy"
-      ).length;
-
-      const medium = user.solved.filter(
-        (s) => s.question.difficulty === "Medium"
-      ).length;
-
-      const hard = user.solved.filter(
-        (s) => s.question.difficulty === "Hard"
-      ).length;
-
-      const score = easy * 1 + medium * 3 + hard * 5;
-
-      return {
-        username: user.username,
-        easy,
-        medium,
-        hard,
-        score,
-      };
-    });
-
-    leaderboard.sort((a, b) => b.score - a.score);
-
-    const ranked = leaderboard.map((user, index) => ({
-      rank: index + 1,
-      ...user,
-    }));
 
     res.json({
       success: true,
-      leaderboard: ranked,
+      data: leaderboard
     });
-
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+    console.error(err);
     res.status(500).json({
-      error: "Failed to fetch leaderboard",
+      success: false,
+      message: "Failed to fetch leaderboard"
     });
   }
+};
+
+export const getMyRank = async (req, res) => {
+  const userId = req.user.id;
+
+  const data = await prisma.leaderboard.findUnique({
+    where: { userId }
+  });
+
+  res.json(data);
 };

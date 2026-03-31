@@ -16,6 +16,7 @@ model User {
 
   submissions Submission[]
   solved      SolvedProblem[]
+  leaderboard Leaderboard?
 }
 
 model Question {
@@ -77,4 +78,14 @@ model SolvedProblem {
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@unique([userId, questionId])
+}
+
+model Leaderboard {
+  userId Int @id
+  score  Int
+  rank   Int
+
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([score])
 }
