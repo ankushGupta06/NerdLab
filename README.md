@@ -1,6 +1,6 @@
 # 🧪 NerdLab
 
-### A Nerdy Collaborative Coding Lab with Multi-Language Execution (Python, C++, Java)
+### A Collaborative Coding Platform with Multi-Language Execution (Python, C++, Java) and Dockerized judging system
 
 NerdLab is a collaborative coding platform where users can write, run, and experiment with code in a secure sandbox environment.
 Think of it as a cozy lab for developers to test ideas, solve problems, and execute code across multiple languages — safely and instantly.
